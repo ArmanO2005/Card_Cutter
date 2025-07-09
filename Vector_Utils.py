@@ -1,10 +1,15 @@
 from sentence_transformers import SentenceTransformer, util
 import itertools
 from docx import Document
+from docx.oxml.ns import qn
+from docx.shared import Pt
+from docx.text.run import Run
 import openai
 import json
 import spacy
 from spacy.cli import download
+import string
+
 
 
 with open('secrets.json') as f:
@@ -58,16 +63,37 @@ def llmd_prompt(prompt, article):
     return response.choices[0].message.content.strip()
 
 
-def clause_seperator(text):
+def clause_separator(text):
     doc = nlp(text)
     clauses = []
-    clause = []
+    clause_tokens = []
 
     for token in doc:
-        clause.append(token.text)
+        clause_tokens.append(token)
+
         if token.dep_ in ("ccomp", "advcl", "relcl", "conj") and token.head.dep_ != "ROOT":
-            clauses.append(" ".join(clause).strip())
-            clause = []
-    if clause:
-        clauses.append(" ".join(clause).strip())
+            joined_clause = spacy.tokens.Span(doc, clause_tokens[0].i, clause_tokens[-1].i + 1).text
+            clauses.append(joined_clause.strip())
+            clause_tokens = []
+
+    if clause_tokens:
+        joined_clause = spacy.tokens.Span(doc, clause_tokens[0].i, clause_tokens[-1].i + 1).text
+        clauses.append(joined_clause.strip())
+
     return clauses
+
+
+def underline_best_match_in_paragraph(paragraph, best_match):
+    if not best_match:
+        return
+
+    text = paragraph.text
+    for clause in best_match:
+        if clause in text:
+            parts = text.split(clause)
+            if parts[0]:
+                paragraph.add_run(parts[0])
+            match_run = paragraph.add_run(clause)
+            match_run.underline = True
+            if len(parts) > 1 and parts[1]:
+                paragraph.add_run(parts[1])
