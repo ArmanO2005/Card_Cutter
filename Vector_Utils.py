@@ -9,7 +9,7 @@ import json
 import spacy
 from spacy.cli import download
 import string
-
+import re
 
 
 with open('secrets.json') as f:
@@ -83,17 +83,63 @@ def clause_separator(text):
     return clauses
 
 
-def underline_best_match_in_paragraph(paragraph, best_match):
-    if not best_match:
-        return
+def split_keep_delimiters(text, delimiters):
+    escaped = [re.escape(d) for d in delimiters]
+    pattern = f"({'|'.join(escaped)})"
+    return re.split(pattern, text)
 
-    text = paragraph.text
+
+def underline_best_match_in_paragraph(paragraph, best_match, emphasis_words):
+    if not best_match:
+        small_text = paragraph.text
+        paragraph.clear()
+        paragraph.add_run(small_text).font.size = Pt(8)
+
+    full_text = paragraph.text
+    paragraph.clear()  # Clear existing text and runs
+
+    current_index = 0
+
     for clause in best_match:
-        if clause in text:
-            parts = text.split(clause)
-            if parts[0]:
-                paragraph.add_run(parts[0])
-            match_run = paragraph.add_run(clause)
-            match_run.underline = True
-            if len(parts) > 1 and parts[1]:
-                paragraph.add_run(parts[1])
+        clause_index = full_text.find(clause, current_index)
+
+        if clause_index == -1:
+            continue  # Skip if clause not found
+
+        # Add the text before the match with size 8
+        if clause_index > current_index:
+            before_text = full_text[current_index:clause_index]
+            run = paragraph.add_run(before_text)
+            run.font.size = Pt(8)
+
+        # Add the matched clause with underline and size 12
+        run = paragraph.add_run(clause)
+        run.underline = True
+        run.font.size = Pt(11)
+        #attempt at emphasis, works 
+        # run_split = split_keep_delimiters(run.text, emphasis_words)
+        # for run in run_split:
+        #     new_run = paragraph.add_run(run)
+        #     if run in emphasis_words:
+        #         new_run.font.bold = True
+        #         new_run.underline = True
+        #         new_run.font.size = Pt(11)
+        #     else:
+        #         new_run.underline = True
+        #         new_run.font.size = Pt(11)
+
+        current_index = clause_index + len(clause)
+
+    # Add the remaining text after the last match
+    if current_index < len(full_text):
+        remaining = full_text[current_index:]
+        run = paragraph.add_run(remaining)
+        run.font.size = Pt(8)
+
+def emphasis(paragraph, emphasis_words):
+    if any(word in paragraph.text for word in emphasis_words):
+        for run in paragraph.runs:
+            if any(word in run.text for word in emphasis_words):
+                run.font.bold = True
+                run.underline = True
+                run.font.size = Pt(11)
