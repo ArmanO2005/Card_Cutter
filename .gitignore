@@ -1,2 +1,6 @@
 secrets.json
 __pycache__/
+
+requirements.txt
+
+venv/

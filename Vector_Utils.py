@@ -1,14 +1,11 @@
 from sentence_transformers import SentenceTransformer, util
 import itertools
 from docx import Document
-from docx.oxml.ns import qn
 from docx.shared import Pt
-from docx.text.run import Run
 import openai
 import json
 import spacy
 from spacy.cli import download
-import string
 import re
 
 
