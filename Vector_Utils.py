@@ -45,11 +45,11 @@ def read_docx(file_path):
 
 
 def llmd_prompt(prompt, article):
-    full_prompt = "in 7-10 words, restate the prompt as best you can only using words from the article: " + prompt + "\n\nArticle:\n" + article
+    full_prompt = "in 7-10 words, restate the prompt as best you can only using words from the article. Your response should should not include uncertain language. Your response should be no longer than 15 words: " + prompt + "\n\nArticle:\n" + article
     response = openai.ChatCompletion.create(
         model="gpt-4", 
         messages=[
-            {"role": "system", "content": "You summarize and synthesize articles."},
+            {"role": "system", "content": "You summarize and synthesize articles in a decisive and argumentative manner in 15 words or less."},
             {"role": "user", "content": full_prompt}
         ],
         max_tokens=150,
