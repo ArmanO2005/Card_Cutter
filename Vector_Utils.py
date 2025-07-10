@@ -38,7 +38,7 @@ class vectorizer:
             return False
         best_score = 0
         for i in sentences:
-            vector = self.encode(str(i))
+            vector = self.encode(i)
             sim_score = self.similarity(vector, prompt_vec)
             if sim_score > best_score:
                 best_score = sim_score
@@ -52,6 +52,18 @@ def ordered_combinations(iterable, length):
     return itertools.chain.from_iterable(
         itertools.combinations(items, r) for r in range(1, length+1)
     )
+
+
+def greedy_combinations(iterable, length, vectorizer_instance, prompt_vec, threshold=0.3):
+    items = list(iterable)
+    pruned_items = [item for item in items if vectorizer_instance.similarity(vectorizer_instance.encode(item), prompt_vec) > threshold]
+    return itertools.chain.from_iterable(
+        itertools.combinations(pruned_items, r) for r in range(1, length+1)
+    )
+
+    
+
+
 
 
 def read_docx(file_path):
