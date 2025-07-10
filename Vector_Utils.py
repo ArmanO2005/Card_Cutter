@@ -10,6 +10,7 @@ import spacy
 from spacy.cli import download
 import string
 import re
+import numpy as np
 
 
 with open('secrets.json') as f:
@@ -31,6 +32,18 @@ class vectorizer:
     
     def similarity(self, vector, prompt_vec):
         return util.pytorch_cos_sim(vector, prompt_vec).item()
+    
+    def screen_paragraph(self, sentences, prompt_vec, threshold=0.5):
+        if not sentences:
+            return False
+        best_score = 0
+        for i in sentences:
+            vector = self.encode(str(i))
+            sim_score = self.similarity(vector, prompt_vec)
+            if sim_score > best_score:
+                best_score = sim_score
+        print(best_score)
+        return best_score > threshold
 
 
 #todo create subsets of a certain length or less
@@ -135,6 +148,12 @@ def underline_best_match_in_paragraph(paragraph, best_match, emphasis_words):
         remaining = full_text[current_index:]
         run = paragraph.add_run(remaining)
         run.font.size = Pt(8)
+
+def make_small(paragraph):
+    full_text = paragraph.text
+    paragraph.clear()
+    run = paragraph.add_run(full_text)
+    run.font.size = Pt(8)
 
 def emphasis(paragraph, emphasis_words):
     if any(word in paragraph.text for word in emphasis_words):
