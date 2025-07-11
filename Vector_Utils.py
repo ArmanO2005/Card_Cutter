@@ -114,7 +114,7 @@ def split_keep_delimiters(text, delimiters):
     return re.split(pattern, text)
 
 
-def underline_best_match_in_paragraph(paragraph, best_match, emphasis_words):
+def underline_best_match_in_paragraph(paragraph, best_match, emphasis_clauses=None):
     if not best_match:
         small_text = paragraph.text
         paragraph.clear()
@@ -138,20 +138,17 @@ def underline_best_match_in_paragraph(paragraph, best_match, emphasis_words):
             run.font.size = Pt(8)
 
         # Add the matched clause with underline and size 12
-        run = paragraph.add_run(clause)
-        run.underline = True
-        run.font.size = Pt(11)
+        if clause not in emphasis_clauses:
+            run = paragraph.add_run(clause)
+            run.underline = True
+            run.font.size = Pt(11)
+        else:
+            run = paragraph.add_run(clause)
+            run.underline = True
+            run.font.bold = True
+            run.font.size = Pt(11)
         #attempt at emphasis, works 
-        # run_split = split_keep_delimiters(run.text, emphasis_words)
-        # for run in run_split:
-        #     new_run = paragraph.add_run(run)
-        #     if run in emphasis_words:
-        #         new_run.font.bold = True
-        #         new_run.underline = True
-        #         new_run.font.size = Pt(11)
-        #     else:
-        #         new_run.underline = True
-        #         new_run.font.size = Pt(11)
+        
 
         current_index = clause_index + len(clause)
 
