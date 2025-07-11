@@ -8,6 +8,7 @@ import openai
 import json
 import spacy
 from spacy.cli import download
+from spacy.tokens import Span
 import string
 import re
 import numpy as np
@@ -61,9 +62,6 @@ def greedy_combinations(iterable, length, vectorizer_instance, prompt_vec, thres
         itertools.combinations(pruned_items, r) for r in range(1, length+1)
     )
 
-    
-
-
 
 
 def read_docx(file_path):
@@ -88,23 +86,69 @@ def llmd_prompt(prompt, article):
     return response.choices[0].message.content.strip()
 
 
+#in 10-15 words, restate the following article contributions to making the argument in the prompt in the words of the article. Your response should should not include uncertain language. Your response should be no longer than 15 words: 
+def paragraph_prompt(llmd_prompt, article):
+    full_prompt = "restate the following article contributions to making the argument in the prompt in the words of the article. Your response should should not include uncertain language: " + llmd_prompt + "\n\nArticle:\n" + article
+    response = openai.ChatCompletion.create(
+        model="gpt-4", 
+        messages=[
+            {"role": "system", "content": "You summarize and synthesize articles in a decisive and argumentative manner"},
+            {"role": "user", "content": full_prompt}
+        ],
+        max_tokens=150,
+        temperature=0.5
+    )
+    return response.choices[0].message.content.strip()
+
+
 def clause_separator(text):
     doc = nlp(text)
     clauses = []
     clause_tokens = []
 
+    def flush_clause():
+        if clause_tokens:
+            span = Span(doc, clause_tokens[0].i, clause_tokens[-1].i + 1)
+            text = span.text.strip()
+            if len(text.split()) <= 3 and clauses:
+                clauses[-1] += "[SPLIT]" + text
+            else:
+                clauses.append(text)
+            clause_tokens.clear()
+
+
+    inside_parentheses = False
+
     for token in doc:
+        if token.text == "(":
+            flush_clause()
+            inside_parentheses = True
+            continue
+        elif token.text == ")":
+            inside_parentheses = False
+            flush_clause()
+            continue
+
         clause_tokens.append(token)
 
+        if inside_parentheses:
+            continue
+
         if token.dep_ in ("ccomp", "advcl", "relcl", "conj") and token.head.dep_ != "ROOT":
-            joined_clause = spacy.tokens.Span(doc, clause_tokens[0].i, clause_tokens[-1].i + 1).text
-            clauses.append(joined_clause.strip())
-            clause_tokens = []
+            flush_clause()
 
-    if clause_tokens:
-        joined_clause = spacy.tokens.Span(doc, clause_tokens[0].i, clause_tokens[-1].i + 1).text
-        clauses.append(joined_clause.strip())
+        elif token.text in {".", ";", ":"}:
+            flush_clause()
+        elif token.text == ",":
+            flush_clause()
+        elif token.dep_ == "cc":  # coordinating conjunction like 'and', 'but'
+            flush_clause()
+        elif token.pos_ == "SCONJ" and token.text.lower() in {"although", "because", "if", "while"}:
+            flush_clause()
+        elif token.pos_ == "ADV" and token.text.lower() in {"however", "moreover", "therefore", "nevertheless"}:
+            flush_clause()
 
+    flush_clause()
     return clauses
 
 
